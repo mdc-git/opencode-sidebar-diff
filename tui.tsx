@@ -201,6 +201,11 @@ function SidebarDiff(props: { context: Plugin.Context }) {
       if (event.location?.directory === directory()) void refetch()
     }),
   )
+  onCleanup(
+    context.data.on("vcs.branch.updated", (event) => {
+      if (event.location?.directory === directory()) void refetch()
+    }),
+  )
   onCleanup(() => controller.abort())
   onCleanup(() => {
     if (selectionTimer) clearTimeout(selectionTimer)
