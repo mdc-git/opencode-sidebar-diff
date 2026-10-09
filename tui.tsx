@@ -121,6 +121,18 @@ function closeDiff(context: Plugin.Context) {
   context.ui.router.navigate(sessionID ? { type: "session", sessionID } : { type: "home" })
 }
 
+function refreshNativeDiff(context: Plugin.Context, token: string) {
+  const route = context.ui.router.current()
+  if (route.type !== "plugin" || route.name !== "diff") return
+
+  context.ui.router.navigate({
+    type: "plugin",
+    id: route.id,
+    name: route.name,
+    data: { ...route.data, messageID: token },
+  })
+}
+
 function DiffCloseButton(props: { context: Plugin.Context }) {
   const visible = createMemo(() => {
     const route = props.context.ui.router.current()
@@ -198,12 +210,16 @@ function SidebarDiff(props: { context: Plugin.Context }) {
   )
   onCleanup(
     context.data.on("filesystem.changed", (event) => {
-      if (event.location?.directory === directory()) void refetch()
+      if (event.location?.directory !== directory()) return
+      void refetch()
+      refreshNativeDiff(context, event.id)
     }),
   )
   onCleanup(
     context.data.on("vcs.branch.updated", (event) => {
-      if (event.location?.directory === directory()) void refetch()
+      if (event.location?.directory !== directory()) return
+      void refetch()
+      refreshNativeDiff(context, event.id)
     }),
   )
   onCleanup(() => controller.abort())
