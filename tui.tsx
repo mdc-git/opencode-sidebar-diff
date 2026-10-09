@@ -4,6 +4,7 @@ import { MouseButton } from "@opentui/core"
 import type { Vcs } from "@opencode/plugin"
 import { Plugin } from "@opencode/plugin/tui"
 import { For, Show, createMemo, createResource, createSignal, onCleanup } from "solid-js"
+import { SidebarChanges } from "./rpc"
 
 function currentLocation(context: Plugin.Context) {
   const sessionID = currentSessionID(context)
@@ -194,6 +195,12 @@ function SidebarDiff(props: { context: Plugin.Context }) {
           onOpen={openFile}
         />
       ),
+    }),
+  )
+  onCleanup(
+    context.client.rpc(SidebarChanges).events.on("changed", (event) => {
+      if (event.location.directory !== directory()) return
+      void refetch()
     }),
   )
   onCleanup(
