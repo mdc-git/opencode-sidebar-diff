@@ -74,33 +74,33 @@ function FileRow(props: {
 
 function ChangedFiles(props: {
   context: Plugin.Context
-  files: readonly Vcs.FileStatus[]
-  loading: boolean
-  error: unknown
+  files: () => readonly Vcs.FileStatus[]
+  loading: () => boolean
+  error: () => unknown
   onOpen: (file: Vcs.FileStatus) => void
 }) {
   return (
     <box flexDirection="column" width="100%" paddingTop={1} paddingBottom={1}>
       <box flexDirection="row" gap={1} height={1}>
         <text fg={props.context.theme.text.base}>Changes</text>
-        <Show when={!props.loading && !props.error}>
-          <text fg={props.context.theme.text.muted}>{props.files.length}</text>
+        <Show when={!props.loading() && !props.error()}>
+          <text fg={props.context.theme.text.muted}>{props.files().length}</text>
         </Show>
       </box>
 
-      <Show when={props.loading && props.files.length === 0}>
+      <Show when={props.loading() && props.files().length === 0}>
         <text fg={props.context.theme.text.muted}>Loading…</text>
       </Show>
 
-      <Show when={props.error && !props.loading}>
+      <Show when={props.error() && !props.loading()}>
         <text fg={props.context.theme.text.feedback.error.base}>Unable to load changes</text>
       </Show>
 
-      <Show when={!props.loading && !props.error && props.files.length === 0}>
+      <Show when={!props.loading() && !props.error() && props.files().length === 0}>
         <text fg={props.context.theme.text.muted}>No changes</text>
       </Show>
 
-      <For each={props.files}>
+      <For each={props.files()}>
         {(file) => <FileRow context={props.context} file={file} onOpen={props.onOpen} />}
       </For>
     </box>
@@ -188,9 +188,9 @@ function SidebarDiff(props: { context: Plugin.Context }) {
       render: (slot) => (
         <ChangedFiles
           context={context}
-          files={files()}
-          loading={changes.loading}
-          error={changes.error}
+          files={files}
+          loading={() => changes.loading}
+          error={() => changes.error}
           onOpen={openFile}
         />
       ),
