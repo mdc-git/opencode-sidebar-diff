@@ -255,3 +255,4 @@ export default Plugin.define({
     return context.ui.slot({ append: "app", render: () => <SidebarDiff context={context} /> })
   },
 })
+
