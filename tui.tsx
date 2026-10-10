@@ -204,16 +204,7 @@ function SidebarDiff(props: { context: Plugin.Context }) {
     }),
   )
   onCleanup(
-    context.data.listen(({ details }) => {
-      const event = details as {
-        type?: string
-        location?: { directory?: string }
-        data?: { file?: string }
-        properties?: { file?: string }
-      }
-      if (event.type !== "filesystem.changed" && event.type !== "file.watcher.updated") return
-      const file = event.data?.file ?? event.properties?.file
-      if (file?.startsWith(".git/")) return
+    context.data.on("filesystem.changed", (event) => {
       if (event.location?.directory && event.location.directory !== directory()) return
       void refetch()
     }),
