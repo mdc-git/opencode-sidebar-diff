@@ -6,16 +6,6 @@ import { Plugin } from "@opencode/plugin/tui"
 import { For, Show, createMemo, createResource, createSignal, onCleanup } from "solid-js"
 import { SidebarChanges } from "./rpc"
 
-function currentLocation(context: Plugin.Context) {
-  const sessionID = currentSessionID(context)
-  if (sessionID) {
-    const session = context.data.session.get(sessionID)
-    if (session) return session.location
-  }
-
-  return context.location ?? context.data.location.default()
-}
-
 function currentSessionID(context: Plugin.Context) {
   const activeTab = context.ui.tabs.list().find((tab) => tab.active)
   if (activeTab) return activeTab.sessionID
@@ -73,60 +63,39 @@ function FileRow(props: {
   )
 }
 
-function ChangedFiles(props: {
-  context: Plugin.Context
-  files: () => readonly Vcs.FileStatus[]
-  loading: () => boolean
-  error: () => unknown
-  onOpen: (file: Vcs.FileStatus) => void
-}) {
-  return (
-    <box flexDirection="column" width="100%" paddingTop={1} paddingBottom={1}>
-      <box flexDirection="row" gap={1} height={1}>
-        <text fg={props.context.theme.text.base}>Changes</text>
-        <Show when={!props.loading() && !props.error()}>
-          <text fg={props.context.theme.text.muted}>{props.files().length}</text>
-        </Show>
-      </box>
-
-      <Show when={props.loading() && props.files().length === 0}>
-        <text fg={props.context.theme.text.muted}>Loading…</text>
-      </Show>
-
-      <Show when={props.error() && !props.loading()}>
-        <text fg={props.context.theme.text.feedback.error.base}>Unable to load changes</text>
-      </Show>
-
-      <Show when={!props.loading() && !props.error() && props.files().length === 0}>
-        <text fg={props.context.theme.text.muted}>No changes</text>
-      </Show>
-
-      <For each={props.files()}>
-        {(file) => <FileRow context={props.context} file={file} onOpen={props.onOpen} />}
-      </For>
-    </box>
-  )
-}
-
-function closeDiff(context: Plugin.Context) {
-  const route = context.ui.router.current()
-  if (route.type !== "plugin" || route.name !== "diff") return
-
-  const returnRoute = route.data?.returnRoute
-  if (returnRoute && typeof returnRoute === "object" && "type" in returnRoute) {
-    context.ui.router.navigate(returnRoute)
-    return
-  }
-
-  const sessionID = currentSessionID(context)
-  context.ui.router.navigate(sessionID ? { type: "session", sessionID } : { type: "home" })
-}
-
 function DiffCloseButton(props: { context: Plugin.Context }) {
+  const context = props.context
   const visible = createMemo(() => {
-    const route = props.context.ui.router.current()
+    const route = context.ui.router.current()
     return route.type === "plugin" && route.name === "diff"
   })
+  const close = () => {
+    const route = context.ui.router.current()
+    if (route.type !== "plugin" || route.name !== "diff") return
+
+    const returnRoute = route.data?.returnRoute
+    if (returnRoute && typeof returnRoute === "object" && "type" in returnRoute) {
+      context.ui.router.navigate(returnRoute)
+      return
+    }
+
+    const sessionID = currentSessionID(context)
+    context.ui.router.navigate(sessionID ? { type: "session", sessionID } : { type: "home" })
+  }
+
+  context.keymap.layer(() => ({
+    mode: "global",
+    priority: 1000,
+    enabled: visible,
+    commands: [
+      {
+        id: "local.sidebar-diff.close",
+        title: "Close diff viewer",
+        bind: "escape,q",
+        run: close,
+      },
+    ],
+  }))
 
   return (
     <Show when={visible()}>
@@ -137,14 +106,14 @@ function DiffCloseButton(props: { context: Plugin.Context }) {
         zIndex={3000}
         paddingLeft={1}
         paddingRight={1}
-        backgroundColor={props.context.theme.background.raised.high}
+        backgroundColor={context.theme.background.raised.high}
         onMouseUp={(event) => {
           if (event.button !== MouseButton.LEFT) return
           event.stopPropagation()
-          closeDiff(props.context)
+          close()
         }}
       >
-        <text fg={props.context.theme.text.base}>× close</text>
+        <text fg={context.theme.text.base}>× close</text>
       </box>
     </Show>
   )
@@ -152,7 +121,11 @@ function DiffCloseButton(props: { context: Plugin.Context }) {
 
 function SidebarDiff(props: { context: Plugin.Context }) {
   const context = props.context
-  const directory = createMemo(() => currentLocation(context).directory)
+  const directory = createMemo(() => {
+    const sessionID = currentSessionID(context)
+    const location = sessionID ? context.data.session.get(sessionID)?.location : undefined
+    return (location ?? context.location ?? context.data.location.default()).directory
+  })
   const controller = new AbortController()
   const [changes, { refetch }] = createResource(directory, (directory) =>
     context.client.vcs.status({ location: { directory } }, { signal: controller.signal }),
@@ -185,14 +158,31 @@ function SidebarDiff(props: { context: Plugin.Context }) {
   onCleanup(
     context.ui.slot({
       append: "sidebar.content",
-      render: (slot) => (
-        <ChangedFiles
-          context={context}
-          files={files}
-          loading={() => changes.loading}
-          error={() => changes.error}
-          onOpen={openFile}
-        />
+      render: () => (
+        <box flexDirection="column" width="100%" paddingTop={1} paddingBottom={1}>
+          <box flexDirection="row" gap={1} height={1}>
+            <text fg={context.theme.text.base}>Changes</text>
+            <Show when={!changes.loading && !changes.error}>
+              <text fg={context.theme.text.muted}>{files().length}</text>
+            </Show>
+          </box>
+
+          <Show when={changes.loading && files().length === 0}>
+            <text fg={context.theme.text.muted}>Loading…</text>
+          </Show>
+
+          <Show when={changes.error && !changes.loading}>
+            <text fg={context.theme.text.feedback.error.base}>Unable to load changes</text>
+          </Show>
+
+          <Show when={!changes.loading && !changes.error && files().length === 0}>
+            <text fg={context.theme.text.muted}>No changes</text>
+          </Show>
+
+          <For each={files()}>
+            {(file) => <FileRow context={context} file={file} onOpen={openFile} />}
+          </For>
+        </box>
       ),
     }),
   )
@@ -202,21 +192,17 @@ function SidebarDiff(props: { context: Plugin.Context }) {
       void refetch()
     }),
   )
-  onCleanup(
-    context.data.on("filesystem.changed", (event) => {
-      if (event.location?.directory && event.location.directory !== directory()) return
-      void refetch()
-    }),
-  )
-  onCleanup(
-    context.data.on("vcs.branch.updated", (event) => {
-      if (event.location?.directory && event.location.directory !== directory()) return
-      void refetch()
-    }),
-  )
-  onCleanup(() => controller.abort())
+  for (const type of ["filesystem.changed", "vcs.branch.updated"] as const) {
+    onCleanup(
+      context.data.on(type, (event) => {
+        if (event.location?.directory && event.location.directory !== directory()) return
+        void refetch()
+      }),
+    )
+  }
   onCleanup(() => {
     if (selectionTimer) clearTimeout(selectionTimer)
+    controller.abort()
   })
 
   return <DiffCloseButton context={context} />
@@ -225,24 +211,6 @@ function SidebarDiff(props: { context: Plugin.Context }) {
 export default Plugin.define({
   id: "local.sidebar-diff.tui",
   setup(context) {
-    context.keymap.layer(() => ({
-      mode: "global",
-      priority: 1000,
-      enabled: () => {
-        const route = context.ui.router.current()
-        return route.type === "plugin" && route.name === "diff"
-      },
-      commands: [
-        {
-          id: "local.sidebar-diff.close",
-          title: "Close diff viewer",
-          bind: "escape,q",
-          run: () => closeDiff(context),
-        },
-      ],
-    }))
-
     return context.ui.slot({ append: "app", render: () => <SidebarDiff context={context} /> })
   },
 })
-
