@@ -179,7 +179,6 @@ function SidebarDiff(props: { context: Plugin.Context }) {
     if (selectionTimer) clearTimeout(selectionTimer)
     selectionTimer = setTimeout(() => {
       for (let offset = 0; offset < position; offset++) context.keymap.dispatch("diff.next_file")
-      selectionTimer = undefined
     }, 300)
   }
 
