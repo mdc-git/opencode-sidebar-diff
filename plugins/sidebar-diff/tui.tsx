@@ -1,10 +1,14 @@
 /** @jsxImportSource @opentui/solid */
 
-import { MouseButton } from "@opentui/core"
+import { MouseButton, type MouseEvent } from "@opentui/core"
+import { jsx } from "@opentui/solid/jsx-runtime"
 import type { Vcs } from "@opencode/plugin"
 import { Plugin } from "@opencode/plugin/tui"
 import { For, Show, createMemo, createResource, createSignal, onCleanup } from "solid-js"
 import { SidebarChanges } from "./rpc"
+
+// Git installs load this file from node_modules, where OpenTUI skips the Solid JSX
+// transform, so props that change after creation are passed as getters.
 
 function currentSessionID(context: Plugin.Context) {
   const activeTab = context.ui.tabs.list().find((tab) => tab.active)
@@ -26,41 +30,41 @@ function FileRow(props: {
     return props.context.theme.text.base
   }
 
-  return (
-    <box
-      flexDirection="row"
-      gap={1}
-      width="100%"
-      height={1}
-      backgroundColor={
-        hovered() ? props.context.theme.background.raised.base : props.context.theme.background.base
-      }
-      onMouseOver={() => setHovered(true)}
-      onMouseOut={() => setHovered(false)}
-      onMouseUp={(event) => {
-        if (event.button !== MouseButton.LEFT) return
-        event.stopPropagation()
-        props.onOpen(props.file)
-      }}
-    >
+  return jsx("box", {
+    flexDirection: "row",
+    gap: 1,
+    width: "100%",
+    height: 1,
+    get backgroundColor() {
+      return hovered() ? props.context.theme.background.raised.base : props.context.theme.background.base
+    },
+    onMouseOver: () => setHovered(true),
+    onMouseOut: () => setHovered(false),
+    onMouseUp: (event: MouseEvent) => {
+      if (event.button !== MouseButton.LEFT) return
+      event.stopPropagation()
+      props.onOpen(props.file)
+    },
+    children: [
       <text fg={markerColor()} width={1} wrapMode="none">
         {{ added: "+", deleted: "-", modified: "~" }[props.file.status]}
-      </text>
-      <text
-        fg={hovered() ? props.context.theme.text.base : props.context.theme.text.muted}
-        flexGrow={1}
-        wrapMode="none"
-      >
-        {props.file.file}
-      </text>
+      </text>,
+      jsx("text", {
+        get fg() {
+          return hovered() ? props.context.theme.text.base : props.context.theme.text.muted
+        },
+        flexGrow: 1,
+        wrapMode: "none",
+        children: props.file.file,
+      }),
       <text fg={props.context.theme.diff.text.added} wrapMode="none">
         +{props.file.additions}
-      </text>
+      </text>,
       <text fg={props.context.theme.diff.text.removed} wrapMode="none">
         -{props.file.deletions}
-      </text>
-    </box>
-  )
+      </text>,
+    ],
+  })
 }
 
 function DiffCloseButton(props: { context: Plugin.Context }) {
@@ -97,26 +101,31 @@ function DiffCloseButton(props: { context: Plugin.Context }) {
     ],
   }))
 
-  return (
-    <Show when={visible()}>
-      <box
-        position="absolute"
-        top={0}
-        right={1}
-        zIndex={3000}
-        paddingLeft={1}
-        paddingRight={1}
-        backgroundColor={context.theme.background.raised.high}
-        onMouseUp={(event) => {
-          if (event.button !== MouseButton.LEFT) return
-          event.stopPropagation()
-          close()
-        }}
-      >
-        <text fg={context.theme.text.base}>× close</text>
-      </box>
-    </Show>
-  )
+  return Show({
+    get when() {
+      return visible()
+    },
+    get children() {
+      return (
+        <box
+          position="absolute"
+          top={0}
+          right={1}
+          zIndex={3000}
+          paddingLeft={1}
+          paddingRight={1}
+          backgroundColor={context.theme.background.raised.high}
+          onMouseUp={(event) => {
+            if (event.button !== MouseButton.LEFT) return
+            event.stopPropagation()
+            close()
+          }}
+        >
+          <text fg={context.theme.text.base}>× close</text>
+        </box>
+      )
+    },
+  })
 }
 
 function SidebarDiff(props: { context: Plugin.Context }) {
@@ -162,26 +171,54 @@ function SidebarDiff(props: { context: Plugin.Context }) {
         <box flexDirection="column" width="100%" paddingTop={1} paddingBottom={1}>
           <box flexDirection="row" gap={1} height={1}>
             <text fg={context.theme.text.base}>Changes</text>
-            <Show when={!changes.loading && !changes.error}>
-              <text fg={context.theme.text.muted}>{files().length}</text>
-            </Show>
+            {Show({
+              get when() {
+                return !changes.loading && !changes.error
+              },
+              get children() {
+                return jsx("text", {
+                  fg: context.theme.text.muted,
+                  get children() {
+                    return files().length
+                  },
+                })
+              },
+            })}
           </box>
 
-          <Show when={changes.loading && files().length === 0}>
-            <text fg={context.theme.text.muted}>Loading…</text>
-          </Show>
+          {Show({
+            get when() {
+              return changes.loading && files().length === 0
+            },
+            get children() {
+              return <text fg={context.theme.text.muted}>Loading…</text>
+            },
+          })}
 
-          <Show when={changes.error && !changes.loading}>
-            <text fg={context.theme.text.feedback.error.base}>Unable to load changes</text>
-          </Show>
+          {Show({
+            get when() {
+              return changes.error && !changes.loading
+            },
+            get children() {
+              return <text fg={context.theme.text.feedback.error.base}>Unable to load changes</text>
+            },
+          })}
 
-          <Show when={!changes.loading && !changes.error && files().length === 0}>
-            <text fg={context.theme.text.muted}>No changes</text>
-          </Show>
+          {Show({
+            get when() {
+              return !changes.loading && !changes.error && files().length === 0
+            },
+            get children() {
+              return <text fg={context.theme.text.muted}>No changes</text>
+            },
+          })}
 
-          <For each={files()}>
-            {(file) => <FileRow context={context} file={file} onOpen={openFile} />}
-          </For>
+          {For({
+            get each() {
+              return files()
+            },
+            children: (file) => <FileRow context={context} file={file} onOpen={openFile} />,
+          })}
         </box>
       ),
     }),
