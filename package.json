@@ -3,11 +3,14 @@
   "name": "opencode-sidebar-diff",
   "version": "0.0.0",
   "private": true,
+  "repository": "github:mdc-git/opencode-sidebar-diff",
   "type": "module",
   "exports": {
-    ".": "./index.ts",
-    "./tui": "./tui.tsx"
+    ".": "./plugins/sidebar-diff/index.ts",
+    "./tui": "./plugins/sidebar-diff/tui.tsx",
+    "./rpc": "./plugins/sidebar-diff/rpc.ts"
   },
+  "files": ["plugins"],
   "scripts": {
     "check": "tsc --noEmit"
   },

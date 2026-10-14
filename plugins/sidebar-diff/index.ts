@@ -6,7 +6,7 @@ import { Plugin } from "@opencode/plugin"
 import { SidebarChanges } from "./rpc"
 
 export default Plugin.define({
-  id: "local.sidebar-diff.server",
+  id: "mdc-git.sidebar-diff",
   async setup(context) {
     const root = context.location.project.directory
     const repository = await promisify(execFile)(

@@ -89,7 +89,7 @@ function DiffCloseButton(props: { context: Plugin.Context }) {
     enabled: visible,
     commands: [
       {
-        id: "local.sidebar-diff.close",
+        id: "sidebar-diff.close",
         title: "Close diff viewer",
         bind: "escape,q",
         run: close,
@@ -209,7 +209,7 @@ function SidebarDiff(props: { context: Plugin.Context }) {
 }
 
 export default Plugin.define({
-  id: "local.sidebar-diff.tui",
+  id: "mdc-git.sidebar-diff.tui",
   setup(context) {
     return context.ui.slot({ append: "app", render: () => <SidebarDiff context={context} /> })
   },

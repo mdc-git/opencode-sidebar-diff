@@ -9,8 +9,9 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "strict": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["*.ts", "*.tsx"]
+  "include": [".opencode/**/*.ts", "plugins/**/*.ts", "plugins/**/*.tsx"]
 }

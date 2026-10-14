@@ -1,0 +1,7 @@
+node_modules/
+package-lock.json
+!.opencode/
+.opencode/*
+!.opencode/opencode.jsonc
+!.opencode/index.ts
+!.opencode/tui.ts

@@ -27,16 +27,16 @@ Add the Git package to your global OpenCode configuration at
 {
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
-    "opencode-sidebar-diff@git+https://github.com/mdc-git/opencode-sidebar-diff.git"
+    "opencode-sidebar-diff@git+https://github.com/mdc-git/opencode-sidebar-diff.git#<release-tag>"
   ]
 }
 ```
 
 OpenCode loads the package's server and TUI entrypoints together.
 
-To pin the installation to a release, append `#<release-tag>` to the Git URL
-and replace `<release-tag>` with a tag from the repository's [Releases](https://github.com/mdc-git/opencode-sidebar-diff/releases)
-page. The untagged URL above tracks the repository's default branch.
+Choose the latest release from the repository's [Releases](https://github.com/mdc-git/opencode-sidebar-diff/releases)
+page and replace `<release-tag>` with its tag. Until a release is available, omit
+`#<release-tag>` to track the repository's default branch.
 
 ## Usage
 
@@ -52,32 +52,17 @@ The sidebar refreshes when working-tree files change and when Git branch metadat
 
 ## Local checkout
 
-For local development or testing the current source, clone the repository and install its
-dependencies:
+Install dependencies and run OpenCode from the repository root:
 
 ```sh
 git clone https://github.com/mdc-git/opencode-sidebar-diff.git
 cd opencode-sidebar-diff
 bun install --frozen-lockfile
+opencode --standalone
 ```
 
-Load the checkout from the project `opencode.jsonc`:
-
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugins": [
-    {
-      "package": "/absolute/path/to/opencode-sidebar-diff"
-    }
-  ]
-}
-```
-
-Replace the example path with the checkout's absolute path. Use this entry instead of the GitHub
-package entry while developing locally.
-
-Restart OpenCode after adding the configuration.
+The project configuration disables the deployed plugin IDs and loads the local
+server and TUI wrappers from `.opencode/`.
 
 ## Development
 
@@ -93,5 +78,5 @@ Run the repository check:
 bun run check
 ```
 
-The package exports `index.ts` as its server entrypoint and `tui.tsx` as its TUI entrypoint. There is
-no separate build command in this repository.
+Production plugin entrypoints are under `plugins/sidebar-diff/`. The `.opencode/`
+directory contains only local checkout configuration and identity wrappers.
