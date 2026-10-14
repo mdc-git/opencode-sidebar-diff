@@ -34,6 +34,10 @@ Add the Git package to your global OpenCode configuration at
 
 OpenCode loads the package's server and TUI entrypoints together.
 
+To pin the installation to a release, append `#<release-tag>` to the Git URL
+and replace `<release-tag>` with a tag from the repository's [Releases](https://github.com/mdc-git/opencode-sidebar-diff/releases)
+page. The untagged URL above tracks the repository's default branch.
+
 ## Usage
 
 Start OpenCode with the plugin enabled and open a session in a Git repository:
