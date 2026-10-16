@@ -139,9 +139,30 @@ function SidebarDiff(props: { context: Plugin.Context }) {
   const [changes, { refetch }] = createResource(directory, (directory) =>
     context.client.vcs.status({ location: { directory } }, { signal: controller.signal }),
   )
-  const files = () =>
-    !changes.error && changes()?.location.directory === directory() ? changes()!.data : []
+  // `latest` keeps the previous result visible while a refetch is in flight.
+  const current = () =>
+    !changes.error && changes.latest?.location.directory === directory() ? changes.latest : undefined
+  // Reuse unchanged entries so <For> keeps their rows (and hover state) across refetches.
+  let rows = new Map<string, Vcs.FileStatus>()
+  const files = createMemo(() => {
+    const previous = rows
+    rows = new Map(
+      (current()?.data ?? []).map((file) => {
+        const row = previous.get(file.file)
+        const same =
+          row?.status === file.status && row.additions === file.additions && row.deletions === file.deletions
+        return [file.file, same ? row : file]
+      }),
+    )
+    return [...rows.values()]
+  })
   let selectionTimer: ReturnType<typeof setTimeout> | undefined
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined
+  // Filesystem events arrive in bursts; coalesce them into one refetch.
+  const refresh = () => {
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => void refetch(), 150)
+  }
 
   const openFile = (file: Vcs.FileStatus) => {
     const ordered = files().toSorted((left, right) => {
@@ -173,7 +194,7 @@ function SidebarDiff(props: { context: Plugin.Context }) {
             <text fg={context.theme.text.base}>Changes</text>
             {Show({
               get when() {
-                return !changes.loading && !changes.error
+                return current()
               },
               get children() {
                 return jsx("text", {
@@ -188,7 +209,7 @@ function SidebarDiff(props: { context: Plugin.Context }) {
 
           {Show({
             get when() {
-              return changes.loading && files().length === 0
+              return changes.loading && !changes.error && !current()
             },
             get children() {
               return <text fg={context.theme.text.muted}>Loading…</text>
@@ -197,7 +218,7 @@ function SidebarDiff(props: { context: Plugin.Context }) {
 
           {Show({
             get when() {
-              return changes.error && !changes.loading
+              return changes.error
             },
             get children() {
               return <text fg={context.theme.text.feedback.error.base}>Unable to load changes</text>
@@ -206,7 +227,7 @@ function SidebarDiff(props: { context: Plugin.Context }) {
 
           {Show({
             get when() {
-              return !changes.loading && !changes.error && files().length === 0
+              return current() && files().length === 0
             },
             get children() {
               return <text fg={context.theme.text.muted}>No changes</text>
@@ -226,19 +247,20 @@ function SidebarDiff(props: { context: Plugin.Context }) {
   onCleanup(
     context.client.rpc(SidebarChanges).events.on("changed", (event) => {
       if (event.location.directory !== directory()) return
-      void refetch()
+      refresh()
     }),
   )
   for (const type of ["filesystem.changed", "vcs.branch.updated"] as const) {
     onCleanup(
       context.data.on(type, (event) => {
         if (event.location?.directory && event.location.directory !== directory()) return
-        void refetch()
+        refresh()
       }),
     )
   }
   onCleanup(() => {
     if (selectionTimer) clearTimeout(selectionTimer)
+    if (refreshTimer) clearTimeout(refreshTimer)
     controller.abort()
   })
 
